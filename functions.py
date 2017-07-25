@@ -3,7 +3,6 @@ from __future__ import print_function
 import sys
 import os
 import time
-import numpy
 import timeit
 import numpy as np
 import theano
@@ -587,7 +586,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
     last_update = 0
 
     # Load if pretrained weights are available.
-    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')):
+    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')) & False:
         with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'),
                 "rb") as input_file:
             best_params = pickle.load(input_file, encoding='latin1')

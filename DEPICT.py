@@ -1,6 +1,4 @@
 import os
-import numpy as np
-
 
 def use_least_loaded_gpu(least_loaded=None):
     if least_loaded is None:
@@ -16,7 +14,7 @@ def use_least_loaded_gpu(least_loaded=None):
 
         total_util = [int(i) + int(j) for i, j in zip(gpu_mem_util, gpu_util)]
         # total_util = gpu_util
-        least_loaded = np.argmin(total_util)
+        least_loaded = total_util.index(min(total_util))
         os.environ["THEANO_FLAGS"] = "device=cuda" + str(least_loaded)
     else:
         os.environ["THEANO_FLAGS"] = "device=cuda" + str(least_loaded)
@@ -31,7 +29,7 @@ import socket
 ############################## settings ##############################
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', default=42)
-parser.add_argument('--dataset', default='USPS')
+parser.add_argument('--dataset', default='FRGC')
 parser.add_argument('--datasets_path', default='/datasets/')
 parser.add_argument('--feature_map_sizes', default=[50, 50, 10])
 parser.add_argument('--dropouts', default=[0.1, 0.1, 0.0])
@@ -60,8 +58,8 @@ print(sys.argv)
 seed = args.seed
 np.random.seed(args.seed)
 rng = np.random.RandomState(seed)
-theano_rng = MRG_RandomStreams(seed)
-lasagne.random.set_rng(np.random.RandomState(seed))
+theano_rng = MRG_RandomStreams(rng.randint(2 ** 15))
+lasagne.random.set_rng(np.random.RandomState(rng.randint(2 ** 15)))
 learning_rate = args.learning_rate
 dataset = args.dataset
 datasets_path = args.datasets_path
@@ -75,7 +73,7 @@ verbose = args.verbose
 
 ############################## Load Data  ##############################
 X, y = load_dataset(datasets_path + dataset)
-num_clusters = len(numpy.unique(y))
+num_clusters = len(np.unique(y))
 num_samples = len(y)
 dimensions = [X.shape[1], X.shape[2], X.shape[3]]
 print('dataset: %s \tnum_samples: %d \tnum_clusters: %d \tdimensions: %s'
@@ -102,11 +100,11 @@ train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_reco
               num_clusters, output_path,
               batch_size=batch_size,
               test_batch_size=test_batch_size, num_epochs=num_epochs, learning_rate=learning_rate, verbose=verbose,
-              seed=rng)
+              seed=seed)
 
 ############################## Clustering Pre-trained DEPICT Features  ##############################
 y_pred, centroids = Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path,
-                               test_batch_size=test_batch_size, seed=rng)
+                               test_batch_size=test_batch_size, seed=seed)
 
 ############################## Train DEPICT Model  ##############################
 train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clusters, y_pred, output_path, batch_size=batch_size,
