@@ -28,8 +28,8 @@ import socket
 
 ############################## settings ##############################
 parser = argparse.ArgumentParser()
-parser.add_argument('--seed', default=42)
-parser.add_argument('--dataset', default='FRGC')
+parser.add_argument('--seed', default=10)
+parser.add_argument('--dataset', default='MNIST-full')
 parser.add_argument('--datasets_path', default='/datasets/')
 parser.add_argument('--feature_map_sizes', default=[50, 50, 10])
 parser.add_argument('--dropouts', default=[0.1, 0.1, 0.0])
@@ -58,8 +58,8 @@ print(sys.argv)
 seed = args.seed
 np.random.seed(args.seed)
 rng = np.random.RandomState(seed)
-theano_rng = MRG_RandomStreams(rng.randint(2 ** 15))
-lasagne.random.set_rng(np.random.RandomState(rng.randint(2 ** 15)))
+theano_rng = MRG_RandomStreams(seed)
+lasagne.random.set_rng(np.random.RandomState(seed))
 learning_rate = args.learning_rate
 dataset = args.dataset
 datasets_path = args.datasets_path

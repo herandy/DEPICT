@@ -753,14 +753,14 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
 
     print("\n...Start DEPICT initialization")
     if init_flag:
-        if os.path.isfile(os.path.join(output_path, '../params/weights' + dataset + '.pickle')):
+        if os.path.isfile(os.path.join(output_path, '../params/weights' + dataset + '.pickle')) & False:
             with open(os.path.join(output_path, '../params/weights' + dataset + '.pickle'),
                     "rb") as input_file:
                 weights = pickle.load(input_file, encoding='latin1')
                 lasagne.layers.set_all_param_values([decoder, network2], weights)
         else:
             # Initilization
-            y_targ = numpy.copy(y_pred)
+            y_targ = np.copy(y_pred)
             for epoch in range(1000):
                 train_err = 0
                 lossre = 0
@@ -811,7 +811,7 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
     print('epoch: 0', '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y, y_pred)),
           '\t arc = {:.4f} '.format(adjusted_rand_score(y, y_pred)),
           '\t acc = {:.4f} '.format(bestMap(y, y_pred)))
-    if os.path.isfile(os.path.join(output_path, '../params/rlc' + dataset + '.pickle')):
+    if os.path.isfile(os.path.join(output_path, '../params/rlc' + dataset + '.pickle')) & False:
         with open(os.path.join(output_path, '../params/rlc' + dataset + '.pickle'),
                 "rb") as input_file:
             weights = pickle.load(input_file, encoding='latin1')
@@ -857,7 +857,7 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                 with open(os.path.join(output_path, '../params/rlc' + dataset + '.pickle'), "wb") as output_file:
                     pickle.dump(lasagne.layers.get_all_param_values([decoder, network2]), output_file)
                 break
-            y_prob_prev = numpy.copy(y_prob)
+            y_prob_prev = np.copy(y_prob)
 
             print('epoch:', epoch + 1, '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y, y_pred)),
                   '\t arc = {:.4f} '.format(adjusted_rand_score(y, y_pred)),
