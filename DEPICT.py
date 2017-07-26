@@ -20,7 +20,7 @@ def use_least_loaded_gpu(least_loaded=None):
         os.environ["THEANO_FLAGS"] = "device=cuda" + str(least_loaded)
 
 
-use_least_loaded_gpu()
+use_least_loaded_gpu(0)
 
 import argparse
 from functions import *
@@ -28,8 +28,8 @@ import socket
 
 ############################## settings ##############################
 parser = argparse.ArgumentParser()
-parser.add_argument('--seed', default=10)
-parser.add_argument('--dataset', default='MNIST-full')
+parser.add_argument('--seed', default=42)
+parser.add_argument('--dataset', default='FRGC')
 parser.add_argument('--datasets_path', default='/datasets/')
 parser.add_argument('--feature_map_sizes', default=[50, 50, 10])
 parser.add_argument('--dropouts', default=[0.1, 0.1, 0.0])

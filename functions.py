@@ -181,8 +181,8 @@ def gacMerging(graphW, initClusters, groupNumber, strDescr, z):
     clusterLabels = np.ones((numSample, 1))
     for i in xrange(len(initClusters)):
         clusterLabels[initClusters[i]] = i
-        if VERBOSE:
-            print('   Final group count: ', str(curGroupNum))
+    if VERBOSE:
+        print('   Final group count: ', str(curGroupNum))
 
     return clusterLabels
 
@@ -338,7 +338,7 @@ def predict_ac_mpi(feat, nClass, nSamples, nfeatures):
     return label_pre[:,0]
 
 
-def bestMap (L1, L2):
+def bestMap(L1, L2):
 
     if L1.__len__() != L2.__len__():
         print('size(L1) must == size(L2)')
@@ -358,7 +358,8 @@ def bestMap (L1, L2):
     newL2 = np.zeros(L2.__len__())
     for i in range(nClass2):
         for j in np.nonzero(L2 == Label2[i])[0]:
-            newL2[j] = Label1[c[i]]
+            if len(Label1) > c[i]:
+                newL2[j] = Label1[c[i]]
 
     return accuracy_score(L1, newL2)
 
@@ -428,7 +429,7 @@ class Logger(object):
         pass
 
 
-def kmeans(encoder_val_clean, y, nClusters, y_pred_prev=None, weight_initilization='k-means++', seed=42):
+def kmeans(encoder_val_clean, y, nClusters, y_pred_prev=None, weight_initilization='k-means++', seed=42, n_init=40, max_iter=300):
     # weight_initilization = { 'kmeans-pca', 'kmean++', 'random', None }
 
     if weight_initilization == 'kmeans-pca':
@@ -446,7 +447,7 @@ def kmeans(encoder_val_clean, y, nClusters, y_pred_prev=None, weight_initilizati
     elif weight_initilization == 'k-means++':
 
         start_time = timeit.default_timer()
-        kmeans_model = KMeans(init='k-means++', n_clusters=nClusters, n_init=20, max_iter=300, n_jobs=15, random_state=seed)
+        kmeans_model = KMeans(init='k-means++', n_clusters=nClusters, n_init=n_init, max_iter=max_iter, n_jobs=15, random_state=seed)
         y_pred = kmeans_model.fit_predict(encoder_val_clean)
 
         D = 1.0 / euclidean_distances(encoder_val_clean, kmeans_model.cluster_centers_, squared=True)
@@ -586,7 +587,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
     last_update = 0
 
     # Load if pretrained weights are available.
-    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')) & False:
+    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')):
         with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'),
                 "rb") as input_file:
             best_params = pickle.load(input_file, encoding='latin1')
@@ -612,17 +613,17 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
             print("Epoch {} of {}".format(epoch + 1, num_epochs),
                   "\t  training loss:{:.6f}".format(train_err / num_batches),
                   "\t  validation loss:{:.6f}".format(validation_error))
-            if epoch % 10 == 0:
-                last_update += 1
-                if validation_error < best_val:
-                    last_update = 0
-                    print("new best error: ", validation_error)
-                    best_val = validation_error
-                    best_params_values = lasagne.layers.get_all_param_values(decoder)
-                    with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'), "wb") as output_file:
-                        pickle.dump(best_params_values, output_file)
-                if last_update > 15:
-                    break
+            # if epoch % 10 == 0:
+            last_update += 1
+            if validation_error < best_val:
+                last_update = 0
+                print("new best error: ", validation_error)
+                best_val = validation_error
+                best_params_values = lasagne.layers.get_all_param_values(decoder)
+                with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'), "wb") as output_file:
+                    pickle.dump(best_params_values, output_file)
+            if last_update > 150:
+                break
 
             if (verbose > 1) & (epoch % 50 == 0):
                 # Extract MdA features
@@ -665,7 +666,7 @@ def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, tes
     # Check kmeans results
     kmeans(encoder_val_clean, y, num_clusters, seed=seed)
     initial_time = timeit.default_timer()
-    if (dataset == 'MNIST-full') | (dataset == 'FRGC') | (dataset == 'YTF'):
+    if (dataset == 'MNIST-full') | (dataset == 'FRGC') | (dataset == 'CMU-PIE') | (dataset == 'YTF'):
         # K-means on MdA Features
         centroids, inertia, y_pred = kmeans(encoder_val_clean, y, num_clusters, seed=seed)
         y_pred = (np.array(y_pred)).reshape(np.array(y_pred).shape[0], )
@@ -745,11 +746,11 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
         loss_init, params_init, learning_rate=learning_rate)
     train_fn_init = theano.function([input_var, target_init],
                                     [loss_init, loss_recons, loss_clus_init], updates=updates_init)
+    val_fn_init = theano.function([input_var, target_init],
+                                    [loss_init, loss_recons, loss_clus_init])
 
     test_fn = theano.function([input_var], network_prediction_clean)
     final_time = timeit.default_timer()
-
-
 
     print("\n...Start DEPICT initialization")
     if init_flag:
@@ -759,35 +760,75 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                 weights = pickle.load(input_file, encoding='latin1')
                 lasagne.layers.set_all_param_values([decoder, network2], weights)
         else:
+            X_train, X_val, y_train, y_val, y_pred_train, y_pred_val = train_test_split(
+                X, y, y_pred, test_size=0.10, random_state=42)
+            best_val = 500.0
+            last_update = 0
             # Initilization
-            y_targ = np.copy(y_pred)
+            y_targ_train = np.copy(y_pred_train)
+            y_targ_val = np.copy(y_pred_val)
+            best_val = np.inf
             for epoch in range(1000):
-                train_err = 0
-                lossre = 0
-                losspre = 0
-                for batch in iterate_minibatches(X, y, batch_size, shuffle=True):
+                train_err, val_err = 0, 0
+                lossre_train, lossre_val = 0, 0
+                losspre_train, losspre_val = 0, 0
+                num_batches_train = 0
+                for batch in iterate_minibatches(X_train, y_train, batch_size, shuffle=True):
                     minibatch_inputs, targets, idx = batch
-                    minibatch_error, lossrec, losspred = train_fn_init(minibatch_inputs, np.int32(y_targ[idx]))
+                    minibatch_error, lossrec, losspred = train_fn_init(minibatch_inputs, np.int32(y_targ_train[idx]))
                     train_err += minibatch_error
-                    lossre += lossrec
-                    losspre += losspred
+                    lossre_train += lossrec
+                    losspre_train += losspred
+                    num_batches_train += 1
 
-                y_pred = np.zeros(X.shape[0])
-                for batch in iterate_minibatches(X, y, test_batch_size, shuffle=False):
+                num_batches_val = 0
+                for batch in iterate_minibatches(X_val, y_val, 1, shuffle=True):
+                    minibatch_inputs, targets, idx = batch
+                    minibatch_error, lossrec, losspred = val_fn_init(minibatch_inputs, np.int32(y_targ_val[idx]))
+                    val_err += minibatch_error
+                    lossre_val += lossrec
+                    losspre_val += losspred
+                    num_batches_val += 1
+
+                y_pred = np.zeros(X_train.shape[0])
+                for batch in iterate_minibatches(X_train, y_train, 1, shuffle=False):
                     minibatch_inputs, targets, idx = batch
                     minibatch_prob = test_fn(minibatch_inputs)
                     minibatch_pred = np.argmax(minibatch_prob, axis=1)
                     y_pred[idx] = minibatch_pred
 
-                print('epoch:', epoch + 1, '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y, y_pred)),
-                      '\t arc = {:.4f} '.format(adjusted_rand_score(y, y_pred)),
-                      '\t acc = {:.4f} '.format(bestMap(y, y_pred)),
-                      '\t loss= {:.10f}'.format(train_err / num_batches),
-                      '\t loss_reconstruction= {:.10f}'.format(lossre / num_batches),
-                      '\t loss_prediction= {:.10f}'.format(losspre / num_batches))
-                if (losspre / num_batches) < 0.2:
-                    break
+                y_pred_val = np.zeros(X_val.shape[0])
+                for batch in iterate_minibatches(X_val, y_val, 1, shuffle=False):
+                    minibatch_inputs, targets, idx = batch
+                    minibatch_prob = test_fn(minibatch_inputs)
+                    minibatch_pred = np.argmax(minibatch_prob, axis=1)
+                    y_pred_val[idx] = minibatch_pred
 
+                print('epoch:', epoch + 1, '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y_train, y_pred)),
+                      '\t arc = {:.4f} '.format(adjusted_rand_score(y_train, y_pred)),
+                      '\t acc = {:.4f} '.format(bestMap(y_train, y_pred)),
+                      '\t loss= {:.10f}'.format(train_err / num_batches_train),
+                      '\t loss_reconstruction= {:.10f}'.format(lossre_train / num_batches_train),
+                      '\t loss_prediction= {:.10f}'.format(losspre_train / num_batches_train),
+                      '\t val nmi = {:.4f}  '.format(normalized_mutual_info_score(y_val, y_pred_val)),
+                      '\t val arc = {:.4f} '.format(adjusted_rand_score(y_val, y_pred_val)),
+                      '\t val acc = {:.4f} '.format(bestMap(y_val, y_pred_val)),
+                      '\t val loss= {:.10f}'.format(val_err / num_batches_val),
+                      '\t val loss_reconstruction= {:.10f}'.format(lossre_val / num_batches_val),
+                      '\t val loss_prediction= {:.10f}'.format(losspre_val / num_batches_val))
+                last_update += 1
+                if (losspre_val / num_batches_val) < best_val:
+                    last_update = 0
+                    print("new best error: ", losspre_val / num_batches_val)
+                    best_val = losspre_val / num_batches_val
+                    best_params_values = lasagne.layers.get_all_param_values([decoder, network2])
+
+                if last_update > 20:
+                    break
+                # if (losspre / num_batches) < 0.2:
+                #     break
+
+            lasagne.layers.set_all_param_values([decoder, network2], best_params_values)
             with open(os.path.join(output_path, '../params/weights' + dataset + '.pickle'), "wb") as output_file:
                 pickle.dump(lasagne.layers.get_all_param_values([decoder, network2]), output_file)
 
