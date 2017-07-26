@@ -520,13 +520,13 @@ def build_MdA(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50
     l_e1 = lasagne.layers.DropoutLayer(
         (lasagne.layers.Conv2DLayer(l_e0, num_filters=feature_map_sizes[0], stride=(strides[0], strides[0]),
                                     filter_size=(kernel_sizes[0], kernel_sizes[0]), pad=paddings[0],
-                                    nonlinearity=lasagne.nonlinearities.leaky_rectify, W=lasagne.init.GlorotUniform())),
+                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.1), W=lasagne.init.GlorotUniform())),
         p=dropouts[1])
 
     l_e2 = lasagne.layers.DropoutLayer(
         (lasagne.layers.Conv2DLayer(l_e1, num_filters=feature_map_sizes[1], stride=(strides[1], strides[1]),
                                     filter_size=(kernel_sizes[1], kernel_sizes[1]), pad=paddings[1],
-                                    nonlinearity=lasagne.nonlinearities.leaky_rectify, W=lasagne.init.GlorotUniform())),
+                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.1), W=lasagne.init.GlorotUniform())),
         p=dropouts[2])
 
     l_e2_flat = lasagne.layers.flatten(l_e2)
@@ -535,14 +535,14 @@ def build_MdA(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50
 
     # DECODER
     l_d2_flat = lasagne.layers.DenseLayer(l_e3, num_units=l_e2_flat.output_shape[1],
-                                          nonlinearity=lasagne.nonlinearities.leaky_rectify)
+                                          nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.1))
 
     l_d2 = lasagne.layers.reshape(l_d2_flat,
                                   shape=[-1, l_e2.output_shape[1], l_e2.output_shape[2], l_e2.output_shape[3]])
 
     l_d1 = lasagne.layers.Deconv2DLayer(l_d2, num_filters=feature_map_sizes[0], stride=(strides[1], strides[1]),
                                         filter_size=(kernel_sizes[1], kernel_sizes[1]), crop=paddings[1],
-                                        nonlinearity=lasagne.nonlinearities.leaky_rectify)
+                                        nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.1))
 
     l_d0 = lasagne.layers.Deconv2DLayer(l_d1, num_filters=n_in[0], stride=(strides[0], strides[0]),
                                         filter_size=(kernel_sizes[0], kernel_sizes[0]), crop=paddings[0],
