@@ -583,7 +583,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
     val_fn = theano.function([input_var], loss_recons_clean)
     X_train, X_val, y_train, y_val = train_test_split(
         X, y, stratify=y, test_size=0.10, random_state=42)
-    best_val = 500.0
+    best_val = np.inf
     last_update = 0
 
     # Load if pretrained weights are available.
@@ -762,7 +762,7 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
         else:
             X_train, X_val, y_train, y_val, y_pred_train, y_pred_val = train_test_split(
                 X, y, y_pred, stratify=y, test_size=0.10, random_state=42)
-            best_val = 500.0
+            best_val = 0
             last_update = 0
             # Initilization
             y_targ_train = np.copy(y_pred_train)
@@ -814,7 +814,7 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                       '\t loss_prediction= {:.10f}'.format(losspre_train / num_batches_train),
                       '\t val nmi = {:.4f}  '.format(val_nmi))
                 last_update += 1
-                if val_nmi < best_val:
+                if val_nmi > best_val:
                     last_update = 0
                     print("new best val nmi: ", val_nmi)
                     best_val = val_nmi
