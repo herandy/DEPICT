@@ -582,7 +582,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
     train_fn = theano.function([input_var], loss_recons, updates=updates)
     val_fn = theano.function([input_var], loss_recons_clean)
     X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=0.10, random_state=42)
+        X, y, stratify=y, test_size=0.10, random_state=42)
     best_val = 500.0
     last_update = 0
 
@@ -594,7 +594,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
             lasagne.layers.set_all_param_values(decoder, best_params)
     else:
         # TRAIN MODEL
-        if (verbose > 1):
+        if verbose > 1:
             encoder_clean = lasagne.layers.get_output(encoder, deterministic=True)
             encoder_clean_function = theano.function([input_var], encoder_clean)
 
@@ -622,7 +622,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
                 best_params_values = lasagne.layers.get_all_param_values(decoder)
                 with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'), "wb") as output_file:
                     pickle.dump(best_params_values, output_file)
-            if last_update > 150:
+            if last_update > 100:
                 break
 
             if (verbose > 1) & (epoch % 50 == 0):
@@ -761,7 +761,7 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                 lasagne.layers.set_all_param_values([decoder, network2], weights)
         else:
             X_train, X_val, y_train, y_val, y_pred_train, y_pred_val = train_test_split(
-                X, y, y_pred, test_size=0.10, random_state=42)
+                X, y, y_pred, stratify=y, test_size=0.10, random_state=42)
             best_val = 500.0
             last_update = 0
             # Initilization
@@ -781,21 +781,14 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                     losspre_train += losspred
                     num_batches_train += 1
 
-                num_batches_val = 0
-                for batch in iterate_minibatches(X_val, y_val, 1, shuffle=True):
-                    minibatch_inputs, targets, idx = batch
-                    minibatch_error, lossrec, losspred = val_fn_init(minibatch_inputs, np.int32(y_targ_val[idx]))
-                    val_err += minibatch_error
-                    lossre_val += lossrec
-                    losspre_val += losspred
-                    num_batches_val += 1
-
-                y_pred = np.zeros(X_train.shape[0])
-                for batch in iterate_minibatches(X_train, y_train, 1, shuffle=False):
-                    minibatch_inputs, targets, idx = batch
-                    minibatch_prob = test_fn(minibatch_inputs)
-                    minibatch_pred = np.argmax(minibatch_prob, axis=1)
-                    y_pred[idx] = minibatch_pred
+                # num_batches_val = 0
+                # for batch in iterate_minibatches(X_val, y_val, 1, shuffle=True):
+                #     minibatch_inputs, targets, idx = batch
+                #     minibatch_error, lossrec, losspred = val_fn_init(minibatch_inputs, np.int32(y_targ_val[idx]))
+                #     val_err += minibatch_error
+                #     lossre_val += lossrec
+                #     losspre_val += losspred
+                #     num_batches_val += 1
 
                 y_pred_val = np.zeros(X_val.shape[0])
                 for batch in iterate_minibatches(X_val, y_val, 1, shuffle=False):
@@ -804,26 +797,30 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                     minibatch_pred = np.argmax(minibatch_prob, axis=1)
                     y_pred_val[idx] = minibatch_pred
 
+                y_pred = np.zeros(X.shape[0])
+                for batch in iterate_minibatches(X, y, test_batch_size, shuffle=False):
+                    minibatch_inputs, targets, idx = batch
+                    minibatch_prob = test_fn(minibatch_inputs)
+                    minibatch_pred = np.argmax(minibatch_prob, axis=1)
+                    y_pred[idx] = minibatch_pred
+
+                val_nmi = normalized_mutual_info_score(y_targ_val, y_pred_val)
+
                 print('epoch:', epoch + 1, '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y_train, y_pred)),
                       '\t arc = {:.4f} '.format(adjusted_rand_score(y_train, y_pred)),
                       '\t acc = {:.4f} '.format(bestMap(y_train, y_pred)),
                       '\t loss= {:.10f}'.format(train_err / num_batches_train),
                       '\t loss_reconstruction= {:.10f}'.format(lossre_train / num_batches_train),
                       '\t loss_prediction= {:.10f}'.format(losspre_train / num_batches_train),
-                      '\t val nmi = {:.4f}  '.format(normalized_mutual_info_score(y_val, y_pred_val)),
-                      '\t val arc = {:.4f} '.format(adjusted_rand_score(y_val, y_pred_val)),
-                      '\t val acc = {:.4f} '.format(bestMap(y_val, y_pred_val)),
-                      '\t val loss= {:.10f}'.format(val_err / num_batches_val),
-                      '\t val loss_reconstruction= {:.10f}'.format(lossre_val / num_batches_val),
-                      '\t val loss_prediction= {:.10f}'.format(losspre_val / num_batches_val))
+                      '\t val nmi = {:.4f}  '.format(val_nmi))
                 last_update += 1
-                if (losspre_val / num_batches_val) < best_val:
+                if val_nmi < best_val:
                     last_update = 0
-                    print("new best error: ", losspre_val / num_batches_val)
-                    best_val = losspre_val / num_batches_val
+                    print("new best val nmi: ", val_nmi)
+                    best_val = val_nmi
                     best_params_values = lasagne.layers.get_all_param_values([decoder, network2])
-                    if (losspre_val / num_batches_val) < 0.2:
-                        break
+                    # if (losspre_val / num_batches_val) < 0.2:
+                    #     break
 
                 if last_update > 20:
                     break
