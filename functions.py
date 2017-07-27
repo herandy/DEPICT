@@ -822,7 +822,7 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                     # if (losspre_val / num_batches_val) < 0.2:
                     #     break
 
-                if last_update > 20:
+                if last_update > 5:
                     break
 
             lasagne.layers.set_all_param_values([decoder, network2], best_params_values)
