@@ -666,7 +666,7 @@ def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, tes
     # Check kmeans results
     kmeans(encoder_val_clean, y, num_clusters, seed=seed)
     initial_time = timeit.default_timer()
-    if (dataset == 'MNIST-full') | (dataset == 'FRGC') | (dataset == 'CMU-PIE') | (dataset == 'YTF'):
+    if (dataset == 'MNIST-full') | (dataset == 'FRGC') | (dataset == 'YTF'):# | (dataset == 'CMU-PIE'):
         # K-means on MdA Features
         centroids, inertia, y_pred = kmeans(encoder_val_clean, y, num_clusters, seed=seed)
         y_pred = (np.array(y_pred)).reshape(np.array(y_pred).shape[0], )
@@ -822,11 +822,11 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                     print("new best error: ", losspre_val / num_batches_val)
                     best_val = losspre_val / num_batches_val
                     best_params_values = lasagne.layers.get_all_param_values([decoder, network2])
+                    if (losspre_val / num_batches_val) < 0.2:
+                        break
 
                 if last_update > 20:
                     break
-                # if (losspre / num_batches) < 0.2:
-                #     break
 
             lasagne.layers.set_all_param_values([decoder, network2], best_params_values)
             with open(os.path.join(output_path, '../params/weights' + dataset + '.pickle'), "wb") as output_file:
