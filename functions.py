@@ -746,8 +746,6 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
         loss_init, params_init, learning_rate=learning_rate)
     train_fn_init = theano.function([input_var, target_init],
                                     [loss_init, loss_recons, loss_clus_init], updates=updates_init)
-    val_fn_init = theano.function([input_var, target_init],
-                                    [loss_init, loss_recons, loss_clus_init])
 
     test_fn = theano.function([input_var], network_prediction_clean)
     final_time = timeit.default_timer()
@@ -767,7 +765,6 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
             # Initilization
             y_targ_train = np.copy(y_pred_train)
             y_targ_val = np.copy(y_pred_val)
-            best_val = np.inf
             for epoch in range(1000):
                 train_err, val_err = 0, 0
                 lossre_train, lossre_val = 0, 0
@@ -790,12 +787,15 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                 #     losspre_val += losspred
                 #     num_batches_val += 1
 
-                y_pred_val = np.zeros(X_val.shape[0])
-                for batch in iterate_minibatches(X_val, y_val, 1, shuffle=False):
-                    minibatch_inputs, targets, idx = batch
-                    minibatch_prob = test_fn(minibatch_inputs)
-                    minibatch_pred = np.argmax(minibatch_prob, axis=1)
-                    y_pred_val[idx] = minibatch_pred
+                # y_pred_val = np.zeros(X_val.shape[0])
+                # for batch in iterate_minibatches(X_val, y_val, 1, shuffle=False):
+                #     minibatch_inputs, targets, idx = batch
+                #     minibatch_prob = test_fn(minibatch_inputs)
+                #     minibatch_pred = np.argmax(minibatch_prob, axis=1)
+                #     y_pred_val[idx] = minibatch_pred
+
+                y_val_prob = test_fn(X_val)
+                y_val_pred = np.argmax(y_val_prob, axis=1)
 
                 y_pred = np.zeros(X.shape[0])
                 for batch in iterate_minibatches(X, y, test_batch_size, shuffle=False):
@@ -804,11 +804,11 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                     minibatch_pred = np.argmax(minibatch_prob, axis=1)
                     y_pred[idx] = minibatch_pred
 
-                val_nmi = normalized_mutual_info_score(y_targ_val, y_pred_val)
+                val_nmi = normalized_mutual_info_score(y_targ_val, y_val_pred)
 
-                print('epoch:', epoch + 1, '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y_train, y_pred)),
-                      '\t arc = {:.4f} '.format(adjusted_rand_score(y_train, y_pred)),
-                      '\t acc = {:.4f} '.format(bestMap(y_train, y_pred)),
+                print('epoch:', epoch + 1, '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y, y_pred)),
+                      '\t arc = {:.4f} '.format(adjusted_rand_score(y, y_pred)),
+                      '\t acc = {:.4f} '.format(bestMap(y, y_pred)),
                       '\t loss= {:.10f}'.format(train_err / num_batches_train),
                       '\t loss_reconstruction= {:.10f}'.format(lossre_train / num_batches_train),
                       '\t loss_prediction= {:.10f}'.format(losspre_train / num_batches_train),
