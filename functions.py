@@ -520,13 +520,13 @@ def build_MdA(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50
     l_e1 = lasagne.layers.DropoutLayer(
         (lasagne.layers.Conv2DLayer(l_e0, num_filters=feature_map_sizes[0], stride=(strides[0], strides[0]),
                                     filter_size=(kernel_sizes[0], kernel_sizes[0]), pad=paddings[0],
-                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.1), W=lasagne.init.GlorotUniform())),
+                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.01), W=lasagne.init.GlorotUniform())),
         p=dropouts[1])
 
     l_e2 = lasagne.layers.DropoutLayer(
         (lasagne.layers.Conv2DLayer(l_e1, num_filters=feature_map_sizes[1], stride=(strides[1], strides[1]),
                                     filter_size=(kernel_sizes[1], kernel_sizes[1]), pad=paddings[1],
-                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.1), W=lasagne.init.GlorotUniform())),
+                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.01), W=lasagne.init.GlorotUniform())),
         p=dropouts[2])
 
     l_e2_flat = lasagne.layers.flatten(l_e2)
@@ -535,14 +535,14 @@ def build_MdA(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50
 
     # DECODER
     l_d2_flat = lasagne.layers.DenseLayer(l_e3, num_units=l_e2_flat.output_shape[1],
-                                          nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.1))
+                                          nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.01))
 
     l_d2 = lasagne.layers.reshape(l_d2_flat,
                                   shape=[-1, l_e2.output_shape[1], l_e2.output_shape[2], l_e2.output_shape[3]])
 
     l_d1 = lasagne.layers.Deconv2DLayer(l_d2, num_filters=feature_map_sizes[0], stride=(strides[1], strides[1]),
                                         filter_size=(kernel_sizes[1], kernel_sizes[1]), crop=paddings[1],
-                                        nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.1))
+                                        nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.01))
 
     l_d0 = lasagne.layers.Deconv2DLayer(l_d1, num_filters=n_in[0], stride=(strides[0], strides[0]),
                                         filter_size=(kernel_sizes[0], kernel_sizes[0]), crop=paddings[0],
@@ -587,7 +587,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
     last_update = 0
 
     # Load if pretrained weights are available.
-    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')):
+    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')) & False:
         with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'),
                 "rb") as input_file:
             best_params = pickle.load(input_file, encoding='latin1')
@@ -666,7 +666,7 @@ def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, tes
     # Check kmeans results
     kmeans(encoder_val_clean, y, num_clusters, seed=seed)
     initial_time = timeit.default_timer()
-    if (dataset == 'MNIST-full') | (dataset == 'FRGC') | (dataset == 'YTF'):# | (dataset == 'CMU-PIE'):
+    if (dataset == 'MNIST-full') | (dataset == 'FRGC') | (dataset == 'YTF') | (dataset == 'CMU-PIE'):
         # K-means on MdA Features
         centroids, inertia, y_pred = kmeans(encoder_val_clean, y, num_clusters, seed=seed)
         y_pred = (np.array(y_pred)).reshape(np.array(y_pred).shape[0], )
@@ -760,11 +760,16 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
         else:
             X_train, X_val, y_train, y_val, y_pred_train, y_pred_val = train_test_split(
                 X, y, y_pred, stratify=y, test_size=0.10, random_state=42)
-            best_val = 0
             last_update = 0
             # Initilization
             y_targ_train = np.copy(y_pred_train)
             y_targ_val = np.copy(y_pred_val)
+            y_val_prob = test_fn(X_val)
+            y_val_pred = np.argmax(y_val_prob, axis=1)
+            val_nmi = normalized_mutual_info_score(y_targ_val, y_val_pred)
+            best_val = val_nmi
+            print('initial val nmi: ', val_nmi)
+            best_params_values = lasagne.layers.get_all_param_values([decoder, network2])
             for epoch in range(1000):
                 train_err, val_err = 0, 0
                 lossre_train, lossre_val = 0, 0
