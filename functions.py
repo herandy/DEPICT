@@ -783,22 +783,6 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                     losspre_train += losspred
                     num_batches_train += 1
 
-                # num_batches_val = 0
-                # for batch in iterate_minibatches(X_val, y_val, 1, shuffle=True):
-                #     minibatch_inputs, targets, idx = batch
-                #     minibatch_error, lossrec, losspred = val_fn_init(minibatch_inputs, np.int32(y_targ_val[idx]))
-                #     val_err += minibatch_error
-                #     lossre_val += lossrec
-                #     losspre_val += losspred
-                #     num_batches_val += 1
-
-                # y_pred_val = np.zeros(X_val.shape[0])
-                # for batch in iterate_minibatches(X_val, y_val, 1, shuffle=False):
-                #     minibatch_inputs, targets, idx = batch
-                #     minibatch_prob = test_fn(minibatch_inputs)
-                #     minibatch_pred = np.argmax(minibatch_prob, axis=1)
-                #     y_pred_val[idx] = minibatch_pred
-
                 y_val_prob = test_fn(X_val)
                 y_val_pred = np.argmax(y_val_prob, axis=1)
 
