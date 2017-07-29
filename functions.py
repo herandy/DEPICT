@@ -2,13 +2,11 @@ from __future__ import print_function
 
 import sys
 import os
-import time
 import timeit
 import numpy as np
 import theano
 import theano.tensor as T
 import lasagne
-from theano.sandbox.rng_mrg import MRG_RandomStreams
 
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import normalized_mutual_info_score, adjusted_rand_score
