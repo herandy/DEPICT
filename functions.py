@@ -673,7 +673,7 @@ def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, tes
         y_pred = y_pred - 1
     else:
         # AC-PIC on MdA Features
-        if os.path.isfile(os.path.join(output_path, '../params/pred' + dataset + '.pickle')):
+        if os.path.isfile(os.path.join(output_path, '../params/pred' + dataset + '.pickle')) & False:
             with open(os.path.join(output_path, '../params/pred' + dataset + '.pickle'), "rb") as input_file:
                 y_pred = pickle.load(input_file, encoding='latin1')
         else:
