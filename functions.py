@@ -16,6 +16,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 from sklearn.utils import linear_assignment_
 from sklearn.metrics import accuracy_score
+
 try:
     import cPickle as pickle
 except:
@@ -25,7 +26,6 @@ from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.metrics import mean_squared_error
 from six.moves import xrange
 
-
 import scipy
 from numpy.matlib import repmat
 from scipy.spatial.distance import cdist
@@ -33,7 +33,7 @@ from scipy import sparse
 
 
 def gacPathCondEntropy(IminuszW, cluster_i, cluster_j):
-    ## Compute conditional complexity from the subpart of the weighted adjacency matrix
+    # Compute conditional complexity from the subpart of the weighted adjacency matrix
     # Inputs:
     #   - IminuszW: the matrix (I - z*P)
     #	- cluster_i: index vector of cluster i
@@ -49,18 +49,18 @@ def gacPathCondEntropy(IminuszW, cluster_i, cluster_j):
 
     ijGroupIndex = np.append(cluster_i, cluster_j)
 
-    y_ij = np.zeros((num_i+num_j,2))  # [y_i, y_j]
+    y_ij = np.zeros((num_i + num_j, 2))  # [y_i, y_j]
     y_ij[:num_i, 0] = 1
     y_ij[num_i:, 1] = 1
     idx = np.ix_(ijGroupIndex, ijGroupIndex)
-    L_ij = scipy.linalg.solve(IminuszW[idx], y_ij, sym_pos=True)
-    L_ij = sum(L_ij[:num_i,0]) / (num_i*num_i) + sum(L_ij[num_i:,1]) / (num_j*num_j)
+    L_ij = scipy.linalg.inv(IminuszW[idx]).dot(y_ij)
+    L_ij = sum(L_ij[:num_i, 0]) / (num_i * num_i) + sum(L_ij[num_i:, 1]) / (num_j * num_j)
 
     return L_ij
 
 
 def gacPathEntropy(subIminuszW):
-    ## Compute structural complexity from the subpart of the weighted adjacency matrix
+    # Compute structural complexity from the subpart of the weighted adjacency matrix
     # Input:
     #   - subIminuszW: the subpart of (I - z*P)
     # Output:
@@ -68,14 +68,14 @@ def gacPathEntropy(subIminuszW):
     # by Wei Zhang (wzhang009 at gmail.com), June, 8, 2011
 
     N = subIminuszW.shape[0]
-    clusterComp = scipy.linalg.solve(subIminuszW, np.ones((N,1)), sym_pos=True)
-    clusterComp = sum(clusterComp) / (N*N)
+    clusterComp = scipy.linalg.inv(subIminuszW).dot(np.ones((N, 1)))
+    clusterComp = sum(clusterComp) / (N * N)
 
     return clusterComp
 
 
 def gacMerging(graphW, initClusters, groupNumber, strDescr, z):
-    ## Cluster merging for Graph Agglomerative Clustering
+    # Cluster merging for Graph Agglomerative Clustering
     # Implements an agglomerative clustering algorithm based on maiximum graph
     #   strcutural affinity of two groups
     # Inputs:
@@ -90,23 +90,12 @@ def gacMerging(graphW, initClusters, groupNumber, strDescr, z):
     #                   sequentially, starting from 1.
     # by Wei Zhang (wzhang009 at gmail.com), June, 8, 2011
 
-    ##
     numSample = graphW.shape[0]
     IminuszW = np.eye(numSample) - z * graphW
-    # clear
-    graphW
     myInf = 1e10
 
-    ## initialization
+    # initialization
     VERBOSE = True
-
-    if strDescr.lower() == 'path':
-        complexity_fun = gacPathEntropy
-
-        conditionalComplexity_fun = gacPathCondEntropy
-
-    else:
-        print('GAC: Descriptor type is not supported!')
 
     numClusters = len(initClusters)
     if numClusters <= groupNumber:
@@ -115,7 +104,7 @@ def gacMerging(graphW, initClusters, groupNumber, strDescr, z):
     # compute the structural complexity of each initial cluster
     clusterComp = np.zeros((numClusters, 1))
     for i in xrange(numClusters):
-        clusterComp[i] = complexity_fun(IminuszW[np.ix_(initClusters[i], initClusters[i])])
+        clusterComp[i] = gacPathEntropy(IminuszW[np.ix_(initClusters[i], initClusters[i])])
 
     # compute initial(negative) affinity table(upper trianglar matrix), very slow
     if VERBOSE:
@@ -124,7 +113,7 @@ def gacMerging(graphW, initClusters, groupNumber, strDescr, z):
     affinityTab = np.full(shape=(numClusters, numClusters), fill_value=np.inf)
     for j in xrange(numClusters):
         for i in xrange(j):
-            affinityTab[i, j] = - conditionalComplexity_fun(IminuszW, initClusters[i], initClusters[j])
+            affinityTab[i, j] = -1 * gacPathCondEntropy(IminuszW, initClusters[i], initClusters[j])
 
     affinityTab = (clusterComp + clusterComp.T) + affinityTab
 
@@ -146,36 +135,42 @@ def gacMerging(graphW, initClusters, groupNumber, strDescr, z):
 
         # merge the two clusters
 
-        new_cluster = np.unique(np.append(initClusters[minIndex1],initClusters[minIndex2]))
+        new_cluster = np.unique(np.append(initClusters[minIndex1], initClusters[minIndex2]))
 
         # move the second cluster to be merged to the end of the cluster array
         # note that we only need to copy the end cluster's information to
         # the second cluster 's position
         if minIndex2 != curGroupNum:
             initClusters[minIndex2] = initClusters[-1]
-            clusterComp[minIndex2] = clusterComp[curGroupNum-1]
+            clusterComp[minIndex2] = clusterComp[curGroupNum - 1]
             # affinityTab is an upper triangular matrix
-            affinityTab[: minIndex2, minIndex2] = affinityTab[:minIndex2, curGroupNum-1]
-            affinityTab[minIndex2, minIndex2+1: curGroupNum-1] = affinityTab[minIndex2+1:curGroupNum-1, curGroupNum-1]
+            affinityTab[: minIndex2, minIndex2] = affinityTab[:minIndex2, curGroupNum - 1]
+            affinityTab[minIndex2, minIndex2 + 1: curGroupNum - 1] = affinityTab[minIndex2 + 1:curGroupNum - 1,
+                                                                     curGroupNum - 1]
 
         # update the first cluster and remove the second cluster
         initClusters[minIndex1] = new_cluster
         initClusters.pop()
-        clusterComp[minIndex1] = complexity_fun(IminuszW[np.ix_(new_cluster, new_cluster)])
-        clusterComp[curGroupNum-1] = myInf
-        affinityTab[:, curGroupNum-1] = myInf
-        affinityTab[curGroupNum-1,:] = myInf
+        clusterComp[minIndex1] = gacPathEntropy(IminuszW[np.ix_(new_cluster, new_cluster)])
+        clusterComp[curGroupNum - 1] = myInf
+        affinityTab[:, curGroupNum - 1] = myInf
+        affinityTab[curGroupNum - 1, :] = myInf
         curGroupNum = curGroupNum - 1
         if curGroupNum <= groupNumber:
             break
 
         # update the affinity table for the merged cluster
         for groupIndex1 in xrange(minIndex1):
-            affinityTab[groupIndex1, minIndex1] = -1*conditionalComplexity_fun(IminuszW, initClusters[groupIndex1], new_cluster)
-        for groupIndex1 in xrange(minIndex1+1, curGroupNum):
-            affinityTab[minIndex1, groupIndex1] = -1*conditionalComplexity_fun(IminuszW, initClusters[groupIndex1], new_cluster)
-        affinityTab[:minIndex1, minIndex1] = clusterComp[:minIndex1].reshape(-1) + clusterComp[minIndex1] + affinityTab[:minIndex1, minIndex1]
-        affinityTab[minIndex1, minIndex1 + 1: curGroupNum] = clusterComp[minIndex1 + 1: curGroupNum].T + clusterComp[minIndex1] + affinityTab[minIndex1, minIndex1+1:curGroupNum]
+            affinityTab[groupIndex1, minIndex1] = -1 * gacPathCondEntropy(IminuszW, initClusters[groupIndex1],
+                                                                          new_cluster)
+        for groupIndex1 in xrange(minIndex1 + 1, curGroupNum):
+            affinityTab[minIndex1, groupIndex1] = -1 * gacPathCondEntropy(IminuszW, initClusters[groupIndex1],
+                                                                          new_cluster)
+        affinityTab[:minIndex1, minIndex1] = clusterComp[:minIndex1].reshape(-1) + clusterComp[minIndex1] + affinityTab[
+                                                                                                            :minIndex1,
+                                                                                                            minIndex1]
+        affinityTab[minIndex1, minIndex1 + 1: curGroupNum] = clusterComp[minIndex1 + 1: curGroupNum].T + clusterComp[
+            minIndex1] + affinityTab[minIndex1, minIndex1 + 1:curGroupNum]
 
     # generate sample labels
     clusterLabels = np.ones((numSample, 1))
@@ -194,11 +189,6 @@ def gacNNMerge(distance_matrix, NNIndex):
 
     # NN indices
     sampleNum = distance_matrix.shape[0]
-    # if nargin < 2 || size(NNIndex,1) ~= sampleNum || size(NNIndex,2) < 2
-    #     [~, NNIndex] = sort(distance_matrix, 2);
-
-
-    #
     clusterLabels = np.zeros((sampleNum, 1))
     counter = 1
     for i in xrange(sampleNum):
@@ -215,16 +205,12 @@ def gacNNMerge(distance_matrix, NNIndex):
             for j in xrange(1, len(assignedCluster)):
                 clusterLabels[np.where(clusterLabels == assignedCluster[j])] = assignedCluster[0]
 
-    # [graphW, ~] = gacBuildDigraph_c(distance_matrix, 1, 0.95);
-    # [~, clusterLabels] = graphconncomp(sparse(graphW), 'Directed', true, 'Weak', true);
-
     uniqueLabels = np.unique(clusterLabels)
     clusterNumber = len(uniqueLabels)
 
     initialClusters = []
     for i in xrange(clusterNumber):
         initialClusters.append(np.where(clusterLabels[:].flatten() == uniqueLabels[i])[0])
-        # initialClusters[i] = np.where(clusterLabels[:] == uniqueLabels[i])
 
     return initialClusters
 
@@ -244,34 +230,34 @@ def gacBuildDigraph(distance_matrix, K, a):
     # NN indices
     N = distance_matrix.shape[0]
     # find 2*K NNs in the sense of given distances
-    sortedDist  = np.sort(distance_matrix, axis=1)
+    sortedDist = np.sort(distance_matrix, axis=1)
     NNIndex = np.argsort(distance_matrix, axis=1)
-    NNIndex = NNIndex[:,:K+1]
+    NNIndex = NNIndex[:, :K + 1]
 
     # estimate derivation
-    sig2 = np.mean(np.mean(sortedDist[:,1:max(K+1,4)])) * a
+    sig2 = np.mean(np.mean(sortedDist[:, 1:max(K + 1, 4)])) * a
     #########
-    tmpNNDist = np.min(sortedDist[:,1:], axis=1)
-    while any(np.exp(- tmpNNDist / sig2) < 1e-5): # check sig2 and magnify it if it is too small
-        sig2 = 2*sig2
+    tmpNNDist = np.min(sortedDist[:, 1:], axis=1)
+    while any(np.exp(- tmpNNDist / sig2) < 1e-5):  # check sig2 and magnify it if it is too small
+        sig2 = 2 * sig2
 
     #########
     print('  sigma = ', str(np.sqrt(sig2)))
 
     # build graph
-    ND = sortedDist[:, 1:K+1]
-    NI = NNIndex[:, 1:K+2]
+    ND = sortedDist[:, 1:K + 1]
+    NI = NNIndex[:, 1:K + 2]
     XI = repmat(np.arange(0, N).reshape(-1, 1), 1, K)
     sig2 = np.double(sig2)
     ND = np.double(ND)
-    # csc_matrix((data, (row_ind, col_ind)), [shape = (M, N)])
-    graphW = sparse.csc_matrix((np.exp(-ND[:]*(1/sig2)).flatten(), (XI[:].flatten(), NI[:].flatten())), shape=(N, N)).todense()
+    graphW = sparse.csc_matrix((np.exp(-ND[:] * (1 / sig2)).flatten(), (XI[:].flatten(), NI[:].flatten())),
+                               shape=(N, N)).todense()
     graphW += np.eye(N)
 
     return graphW, NNIndex
 
 
-def gacCluster (distance_matrix, groupNumber, strDescr, K, a, z):
+def gacCluster(distance_matrix, groupNumber, strDescr, K, a, z):
     # Graph Agglomerative Clustering toolbox
     # Input:
     #   - distance_matrix: pairwise distances, d_{i -> j}
@@ -298,7 +284,6 @@ def gacCluster (distance_matrix, groupNumber, strDescr, K, a, z):
     # Graph Degree Linkage: Agglomerative Clustering on a Directed Graph.
     # in Proceedings of European Conference on Computer Vision (ECCV), 2012.
 
-    # parse inputs
     print('--------------- Graph Structural Agglomerative Clustering ---------------------');
 
     # initialization
@@ -306,10 +291,8 @@ def gacCluster (distance_matrix, groupNumber, strDescr, K, a, z):
     print('---------- Building graph and forming initial clusters with l-links ---------');
     [graphW, NNIndex] = gacBuildDigraph(distance_matrix, K, a);
     # from adjacency matrix to probability transition matrix
-    graphW = np.array((1./np.sum(graphW, axis=1))) * np.array(graphW) # row sum is 1
+    graphW = np.array((1. / np.sum(graphW, axis=1))) * np.array(graphW)  # row sum is 1
     initialClusters = gacNNMerge(distance_matrix, NNIndex)
-    distance_matrix = []
-    NNIndex = []
 
     print('-------------------------- Zeta merging --------------------------');
     clusteredLabels = gacMerging(graphW, initialClusters, groupNumber, strDescr, z);
@@ -318,28 +301,18 @@ def gacCluster (distance_matrix, groupNumber, strDescr, K, a, z):
 
 
 def predict_ac_mpi(feat, nClass, nSamples, nfeatures):
-    # PREDICT_GDL
-    # a = 100 for USPS
-    # z = 0.01;
     K = 20
     a = 1
     z = 0.01
 
-    data = feat
-    data = np.reshape(data, (nSamples, nfeatures))
-
-    feat = data
-
-    distance_matrix = cdist(feat, feat)
-    distance_matrix = distance_matrix**2
+    distance_matrix = cdist(feat, feat) ** 2
     # path intergral
     label_pre = gacCluster(distance_matrix, nClass, 'path', K, a, z)
 
-    return label_pre[:,0]
+    return label_pre[:, 0]
 
 
 def bestMap(L1, L2):
-
     if L1.__len__() != L2.__len__():
         print('size(L1) must == size(L2)')
 
@@ -348,13 +321,13 @@ def bestMap(L1, L2):
     Label2 = np.unique(L2)
     nClass2 = Label2.__len__()
 
-    nClass = max(nClass1,nClass2)
+    nClass = max(nClass1, nClass2)
     G = np.zeros((nClass, nClass))
     for i in range(nClass1):
         for j in range(nClass2):
-            G[i][j] = np.nonzero((L1 == Label1[i])*(L2 == Label2[j]))[0].__len__()
+            G[i][j] = np.nonzero((L1 == Label1[i]) * (L2 == Label2[j]))[0].__len__()
 
-    c = linear_assignment_.linear_assignment(-G.T)[:,1]
+    c = linear_assignment_.linear_assignment(-G.T)[:, 1]
     newL2 = np.zeros(L2.__len__())
     for i in range(nClass2):
         for j in np.nonzero(L2 == Label2[i])[0]:
@@ -429,7 +402,8 @@ class Logger(object):
         pass
 
 
-def kmeans(encoder_val_clean, y, nClusters, y_pred_prev=None, weight_initilization='k-means++', seed=42, n_init=40, max_iter=300):
+def kmeans(encoder_val_clean, y, nClusters, y_pred_prev=None, weight_initilization='k-means++', seed=42, n_init=40,
+           max_iter=300):
     # weight_initilization = { 'kmeans-pca', 'kmean++', 'random', None }
 
     if weight_initilization == 'kmeans-pca':
@@ -447,7 +421,8 @@ def kmeans(encoder_val_clean, y, nClusters, y_pred_prev=None, weight_initilizati
     elif weight_initilization == 'k-means++':
 
         start_time = timeit.default_timer()
-        kmeans_model = KMeans(init='k-means++', n_clusters=nClusters, n_init=n_init, max_iter=max_iter, n_jobs=15, random_state=seed)
+        kmeans_model = KMeans(init='k-means++', n_clusters=nClusters, n_init=n_init, max_iter=max_iter, n_jobs=15,
+                              random_state=seed)
         y_pred = kmeans_model.fit_predict(encoder_val_clean)
 
         D = 1.0 / euclidean_distances(encoder_val_clean, kmeans_model.cluster_centers_, squared=True)
@@ -461,7 +436,7 @@ def kmeans(encoder_val_clean, y, nClusters, y_pred_prev=None, weight_initilizati
 
     print('k-means: \t nmi =', normalized_mutual_info_score(y, y_pred), '\t arc =', adjusted_rand_score(y, y_pred),
           '\t acc = {:.4f} '.format(bestMap(y, y_pred)),
-          'K-means objective = {:.1f} '.format(kmeans_model.inertia_),  '\t runtime =', end_time - start_time)
+          'K-means objective = {:.1f} '.format(kmeans_model.inertia_), '\t runtime =', end_time - start_time)
 
     if y_pred_prev is not None:
         print('Different Assignments: ', sum(y_pred == y_pred_prev), '\tbestMap: ', bestMap(y_pred, y_pred_prev),
@@ -520,18 +495,21 @@ def build_MdA(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50
     l_e1 = lasagne.layers.DropoutLayer(
         (lasagne.layers.Conv2DLayer(l_e0, num_filters=feature_map_sizes[0], stride=(strides[0], strides[0]),
                                     filter_size=(kernel_sizes[0], kernel_sizes[0]), pad=paddings[0],
-                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.01), W=lasagne.init.GlorotUniform())),
+                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.01),
+                                    W=lasagne.init.GlorotUniform())),
         p=dropouts[1])
 
     l_e2 = lasagne.layers.DropoutLayer(
         (lasagne.layers.Conv2DLayer(l_e1, num_filters=feature_map_sizes[1], stride=(strides[1], strides[1]),
                                     filter_size=(kernel_sizes[1], kernel_sizes[1]), pad=paddings[1],
-                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.01), W=lasagne.init.GlorotUniform())),
+                                    nonlinearity=lasagne.nonlinearities.LeakyRectify(leakiness=0.01),
+                                    W=lasagne.init.GlorotUniform())),
         p=dropouts[2])
 
     l_e2_flat = lasagne.layers.flatten(l_e2)
 
-    l_e3 = lasagne.layers.DenseLayer(l_e2_flat, num_units=feature_map_sizes[2], nonlinearity=lasagne.nonlinearities.tanh)
+    l_e3 = lasagne.layers.DenseLayer(l_e2_flat, num_units=feature_map_sizes[2],
+                                     nonlinearity=lasagne.nonlinearities.tanh)
 
     # DECODER
     l_d2_flat = lasagne.layers.DenseLayer(l_e3, num_units=l_e2_flat.output_shape[1],
@@ -573,9 +551,9 @@ def build_MdA(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50
     return l_e3, l_d0, loss_recons, loss_recons_clean
 
 
-def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_recons_clean, num_clusters, output_path, batch_size=100,
-              test_batch_size=100, num_epochs=1000, learning_rate=1e-4, verbose=1, seed=42):
-
+def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_recons_clean, num_clusters, output_path,
+                  batch_size=100,
+                  test_batch_size=100, num_epochs=1000, learning_rate=1e-4, verbose=1, seed=42):
     learning_rate_shared = theano.shared(lasagne.utils.floatX(learning_rate))
     params = lasagne.layers.get_all_params(decoder, trainable=True)
     updates = lasagne.updates.adam(loss_recons, params, learning_rate=learning_rate_shared)
@@ -587,9 +565,9 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
     last_update = 0
 
     # Load if pretrained weights are available.
-    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')) & False:
+    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')):
         with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'),
-                "rb") as input_file:
+                  "rb") as input_file:
             best_params = pickle.load(input_file, encoding='latin1')
             lasagne.layers.set_all_param_values(decoder, best_params)
     else:
@@ -620,7 +598,8 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
                 print("new best error: ", validation_error)
                 best_val = validation_error
                 best_params_values = lasagne.layers.get_all_param_values(decoder)
-                with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'), "wb") as output_file:
+                with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'),
+                          "wb") as output_file:
                     pickle.dump(best_params_values, output_file)
             if last_update > 100:
                 break
@@ -642,13 +621,13 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
         last_params_values = lasagne.layers.get_all_param_values(decoder)
         with open(os.path.join(output_path, '../params/params_' + dataset + '_last.pickle'), "wb") as output_file:
             pickle.dump(params, output_file)
-        with open(os.path.join(output_path, '../params/params_' + dataset + '_values_last.pickle'), "wb") as output_file:
+        with open(os.path.join(output_path, '../params/params_' + dataset + '_values_last.pickle'),
+                  "wb") as output_file:
             pickle.dump(last_params_values, output_file)
         lasagne.layers.set_all_param_values(decoder, best_params_values)
 
 
 def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, test_batch_size=100, seed=42):
-
     encoder_clean = lasagne.layers.get_output(encoder, deterministic=True)
     encoder_clean_function = theano.function([input_var], encoder_clean)
 
@@ -673,15 +652,14 @@ def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, tes
         y_pred = y_pred - 1
     else:
         # AC-PIC on MdA Features
-        if os.path.isfile(os.path.join(output_path, '../params/pred' + dataset + '.pickle')) & False:
+        if os.path.isfile(os.path.join(output_path, '../params/pred' + dataset + '.pickle')):
             with open(os.path.join(output_path, '../params/pred' + dataset + '.pickle'), "rb") as input_file:
                 y_pred = pickle.load(input_file, encoding='latin1')
         else:
             y_pred = predict_ac_mpi(encoder_val_clean, num_clusters, encoder_val_clean.shape[0],
-                                      encoder_val_clean.shape[1])
+                                    encoder_val_clean.shape[1])
             with open(os.path.join(output_path, '../params/pred' + dataset + '.pickle'), "wb") as output_file:
                 pickle.dump(y_pred, output_file)
-
 
         final_time = timeit.default_timer()
         print('AC-PIC: \t nmi =  ', normalized_mutual_info_score(y, y_pred),
@@ -698,7 +676,8 @@ def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, tes
     return np.int32(y_pred), np.float32(centroids)
 
 
-def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clusters, y_pred, output_path, batch_size=100,
+def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clusters, y_pred, output_path,
+              batch_size=100,
               test_batch_size=100, num_epochs=1000, learning_rate=1e-4,
               prediction_status='soft', rec_mult=1, clus_mult=1, centroids=None, init_flag=1):
     ######################
@@ -752,9 +731,9 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
 
     print("\n...Start DEPICT initialization")
     if init_flag:
-        if os.path.isfile(os.path.join(output_path, '../params/weights' + dataset + '.pickle')) & False:
+        if os.path.isfile(os.path.join(output_path, '../params/weights' + dataset + '.pickle')):
             with open(os.path.join(output_path, '../params/weights' + dataset + '.pickle'),
-                    "rb") as input_file:
+                      "rb") as input_file:
                 weights = pickle.load(input_file, encoding='latin1')
                 lasagne.layers.set_all_param_values([decoder, network2], weights)
         else:
@@ -838,9 +817,9 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
     print('epoch: 0', '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y, y_pred)),
           '\t arc = {:.4f} '.format(adjusted_rand_score(y, y_pred)),
           '\t acc = {:.4f} '.format(bestMap(y, y_pred)))
-    if os.path.isfile(os.path.join(output_path, '../params/rlc' + dataset + '.pickle')) & False:
+    if os.path.isfile(os.path.join(output_path, '../params/rlc' + dataset + '.pickle')):
         with open(os.path.join(output_path, '../params/rlc' + dataset + '.pickle'),
-                "rb") as input_file:
+                  "rb") as input_file:
             weights = pickle.load(input_file, encoding='latin1')
             lasagne.layers.set_all_param_values([decoder, network2], weights)
     else:
@@ -857,12 +836,12 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                 # M_step
                 if prediction_status == 'hard':
                     minibatch_err, lossrec, losspred = train_fn(minibatch_inputs,
-                                                                     np.ndarray.astype(y_pred[idx], 'int32'),
-                                                                     np.ndarray.astype(y_prob_max[idx],
-                                                                                       'float32'))
+                                                                np.ndarray.astype(y_pred[idx], 'int32'),
+                                                                np.ndarray.astype(y_prob_max[idx],
+                                                                                  'float32'))
                 elif prediction_status == 'soft':
                     minibatch_err, lossrec, losspred = train_fn(minibatch_inputs,
-                                                                     np.ndarray.astype(y_prob[idx], 'float32'))
+                                                                np.ndarray.astype(y_prob[idx], 'float32'))
 
                 minibatch_prob = test_fn(minibatch_inputs)
                 y_prob[idx] = minibatch_prob
@@ -892,8 +871,6 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
                   '\t loss_recons= {:.10f}'.format(lossre / num_batches),
                   '\t loss_pred= {:.10f}'.format(losspre / num_batches))
 
-
-
     # test
     y_pred = np.zeros(X.shape[0])
     for batch in iterate_minibatches(X, y, test_batch_size, shuffle=False):
@@ -905,5 +882,3 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
     print('final: ', '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y, y_pred)),
           '\t arc = {:.4f} '.format(adjusted_rand_score(y, y_pred)),
           '\t acc = {:.4f} '.format(bestMap(y, y_pred)))
-
-
