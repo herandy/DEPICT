@@ -9,9 +9,9 @@ Package versions used when preparing the paper:
     CUDA toolkit 8.0, CUDNN 5105
     Python 2.7.13 & 3.6.1
 
-Use DEPICT.py and change its arguments accordingly to run the algorithm, you only need to specify dataset names.
+Use DEPICT.py and change its arguments accordingly to run the algorithm, you only need to specify dataset names by passing --dataset='USPS' for example.
 
-The model saves the parameters at each step and reloads them if available by default, set --continue_training=False to avoid this.
+By default the model saves the parameters at each step but will not load them if the files are available, to make the program check for available files and load its parameters at each step pass --continue_training.
 
 To reproduce timings the MATLAB version of AC-MPI should be used, please install the MATLAB engine for Python, you can follow the original [installation instructions](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html)
 
