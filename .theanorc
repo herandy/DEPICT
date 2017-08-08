@@ -1,0 +1,23 @@
+[global]
+cxx=/usr/bin/g++-5
+cc=/usr/bin/gcc-5
+device=cuda1
+#optimizer_excluding=low_memory
+#optimizer_excluding=inplace
+#allow_gc=False
+floatX=float32
+root=/usr/local/cuda-8.0
+#assert_no_cpu_op='raise'
+#profile=True
+[dnn.conv]
+algo_fwd = time_once
+algo_bwd_data = time_once
+algo_bwd_filter = time_once
+#algo_bwd_data = deterministic
+#algo_bwd_filter = deterministic
+[nvcc]
+fastmath=True
+[blas]
+ldflags=-lmkl_rt
+nvcc.flags=std=c++11 -D__CORRECT_ISO_CPP11_MATH_H_PROTO -D_FORCE_INLINES
+#cxxflags=-O3 -ffast-math -ftree-loop-distribution -funroll-loops -ftracer
