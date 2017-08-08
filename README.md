@@ -14,3 +14,5 @@ Use DEPICT.py and change its arguments accordingly to run the algorithm, you onl
 The model saves the parameters at each step and reloads them if available by default, set --continue_training=False to avoid this.
 
 To reproduce timings the MATLAB version of AC-MPI should be used, please install the MATLAB engine for Python, you can follow the original [installation instructions](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html)
+
+We have included our .theanorc file to ensure consistency.
