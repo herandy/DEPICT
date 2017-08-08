@@ -31,7 +31,7 @@ import socket
 parser = argparse.ArgumentParser()
 parser.add_argument('--seed', default=42)
 parser.add_argument('--dataset', default='USPS')
-parser.add_argument('--continue_training', default=True)
+parser.add_argument('--continue_training', action='store_true', default=False)
 parser.add_argument('--datasets_path', default='/datasets/')
 parser.add_argument('--feature_map_sizes', default=[50, 50, 10])
 parser.add_argument('--dropouts', default=[0.1, 0.1, 0.0])
