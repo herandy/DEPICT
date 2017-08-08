@@ -1,6 +1,6 @@
 Implementation of the DEPICT algorithm.
 
-Released as part of ECCV 2017 paper submission "Deep Clustering via Joint Convolutional Autoencoder Embedding and Relative Entropy Minimization".
+Released as part of ICCV 2017 paper submission "[Deep Clustering via Joint Convolutional Autoencoder Embedding and Relative Entropy Minimization](https://arxiv.org/abs/1704.06327)".
 
 Package versions used when preparing the paper:
 
@@ -13,5 +13,5 @@ Use DEPICT.py and change its arguments accordingly to run the algorithm, you onl
 
 The model saves the parameters at each step and reloads them if available by default, set --continue_training=False to avoid this.
 
-To reproduce timings the MATLAB version of AC-MPI should be used, please install the MATLAB engine for Python, you can follow the original instructions for installation at:
-https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html
+To reproduce timings the MATLAB version of AC-MPI should be used, please install the MATLAB engine for Python, you can follow the original [installation instructions]
+(https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html)
