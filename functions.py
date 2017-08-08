@@ -24,7 +24,10 @@ except:
 import h5py
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.metrics import mean_squared_error
-from six.moves import xrange
+try:
+    from six.moves import xrange
+except:
+    pass
 
 import scipy
 from numpy.matlib import repmat
@@ -552,8 +555,8 @@ def build_MdA(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50
 
 
 def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_recons_clean, num_clusters, output_path,
-                  batch_size=100,
-                  test_batch_size=100, num_epochs=1000, learning_rate=1e-4, verbose=1, seed=42):
+                  batch_size=100, test_batch_size=100, num_epochs=1000, learning_rate=1e-4, verbose=1, seed=42,
+                  continue_training=False):
     learning_rate_shared = theano.shared(lasagne.utils.floatX(learning_rate))
     params = lasagne.layers.get_all_params(decoder, trainable=True)
     updates = lasagne.updates.adam(loss_recons, params, learning_rate=learning_rate_shared)
@@ -565,7 +568,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
     last_update = 0
 
     # Load if pretrained weights are available.
-    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')):
+    if os.path.isfile(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle')) & continue_training:
         with open(os.path.join(output_path, '../params/params_' + dataset + '_values_best.pickle'),
                   "rb") as input_file:
             best_params = pickle.load(input_file, encoding='latin1')
@@ -652,12 +655,24 @@ def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, tes
         y_pred = y_pred - 1
     else:
         # AC-PIC on MdA Features
-        if os.path.isfile(os.path.join(output_path, '../params/pred' + dataset + '.pickle')):
+        if os.path.isfile(os.path.join(output_path, '../params/pred' + dataset + '.pickle')) & continue_training:
             with open(os.path.join(output_path, '../params/pred' + dataset + '.pickle'), "rb") as input_file:
                 y_pred = pickle.load(input_file, encoding='latin1')
         else:
-            y_pred = predict_ac_mpi(encoder_val_clean, num_clusters, encoder_val_clean.shape[0],
-                                    encoder_val_clean.shape[1])
+            try:
+                import matlab.engine
+                eng = matlab.engine.start_matlab()
+                eng.addpath(eng.genpath('matlab'))
+                targets_init = eng.predict_ac_mpi(
+                    matlab.double(
+                        encoder_val_clean.reshape(encoder_val_clean.shape[0] * encoder_val_clean.shape[1]).tolist()),
+                    num_clusters, encoder_val_clean.shape[0], encoder_val_clean.shape[1])
+                y_pred = (np.array(targets_init)).reshape(np.array(targets_init).shape[0], )
+                eng.quit()
+                y_pred = y_pred - 1
+            except:
+                y_pred = predict_ac_mpi(encoder_val_clean, num_clusters, encoder_val_clean.shape[0],
+                                        encoder_val_clean.shape[1])
             with open(os.path.join(output_path, '../params/pred' + dataset + '.pickle'), "wb") as output_file:
                 pickle.dump(y_pred, output_file)
 
@@ -677,9 +692,8 @@ def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, tes
 
 
 def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clusters, y_pred, output_path,
-              batch_size=100,
-              test_batch_size=100, num_epochs=1000, learning_rate=1e-4,
-              prediction_status='soft', rec_mult=1, clus_mult=1, centroids=None, init_flag=1):
+              batch_size=100, test_batch_size=100, num_epochs=1000, learning_rate=1e-4, prediction_status='soft',
+              rec_mult=1, clus_mult=1, centroids=None, init_flag=1, continue_training=False):
     ######################
     #   ADD RLC TO MdA   #
     ######################
@@ -731,7 +745,7 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
 
     print("\n...Start DEPICT initialization")
     if init_flag:
-        if os.path.isfile(os.path.join(output_path, '../params/weights' + dataset + '.pickle')):
+        if os.path.isfile(os.path.join(output_path, '../params/weights' + dataset + '.pickle')) & continue_training:
             with open(os.path.join(output_path, '../params/weights' + dataset + '.pickle'),
                       "rb") as input_file:
                 weights = pickle.load(input_file, encoding='latin1')
@@ -817,7 +831,7 @@ def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clust
     print('epoch: 0', '\t nmi = {:.4f}  '.format(normalized_mutual_info_score(y, y_pred)),
           '\t arc = {:.4f} '.format(adjusted_rand_score(y, y_pred)),
           '\t acc = {:.4f} '.format(bestMap(y, y_pred)))
-    if os.path.isfile(os.path.join(output_path, '../params/rlc' + dataset + '.pickle')):
+    if os.path.isfile(os.path.join(output_path, '../params/rlc' + dataset + '.pickle')) & continue_training:
         with open(os.path.join(output_path, '../params/rlc' + dataset + '.pickle'),
                   "rb") as input_file:
             weights = pickle.load(input_file, encoding='latin1')
