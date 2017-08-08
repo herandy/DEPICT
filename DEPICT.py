@@ -104,7 +104,7 @@ train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_reco
 
 ############################## Clustering Pre-trained DEPICT Features  ##############################
 y_pred, centroids = Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path,
-                               test_batch_size=test_batch_size, seed=seed)
+                               test_batch_size=test_batch_size, seed=seed, continue_training=args.continue_training)
 
 ############################## Train DEPICT Model  ##############################
 train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clusters, y_pred, output_path,

@@ -631,7 +631,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
 
 
 def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, test_batch_size=100, seed=42):
-    encoder_clean = lasagne.layers.get_output(encoder, deterministic=True)
+    encoder_clean = lasagne.layers.get_output(encoder, deterministic=True, continue_training=False)
     encoder_clean_function = theano.function([input_var], encoder_clean)
 
     # Extract MdA features
