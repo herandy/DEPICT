@@ -9,7 +9,7 @@ Package versions used when preparing the paper:
     CUDA toolkit 8.0, CUDNN 5105
     Python 2.7.13 & 3.6.1
 
-Use DEPICT.py and change its arguments accordingly to run the algorithm, you only need to specify dataset names by passing --dataset='USPS' for example.
+Use DEPICT.py and change its arguments accordingly to run the algorithm, you only need to specify dataset names by passing --dataset=USPS for example.
 
 By default the model saves the parameters at each step but will not load them if the files are available, to make the program check for available files and load its parameters at each step pass --continue_training.
 
