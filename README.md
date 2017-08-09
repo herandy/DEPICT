@@ -13,6 +13,6 @@ Use DEPICT.py and change its arguments accordingly to run the algorithm, you onl
 
 By default the model saves the parameters at each step but will not load them if the files are available, to make the program check for available files and load its parameters at each step pass --continue_training.
 
-To reproduce timings the MATLAB version of AC-MPI should be used, please install the MATLAB engine for Python, you can follow the original [installation instructions](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html)
+To reproduce running times and some of results, the MATLAB version of AC-MPI should be used for some datasets. Please install the MATLAB engine for Python, you can follow the original [installation instructions](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html)
 
 We have included our .theanorc file to ensure consistency.
