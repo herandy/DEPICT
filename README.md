@@ -1,4 +1,4 @@
-Implementation of the \textbf{DE}e\textbf{P} Embedded Regular\textbf{I}zed \textbf{C}lus\textbf{T}ering (\textit{DEPICT}) algorithm.
+Implementation of the **DE**e**P** Embedded Regular**I**zed **C**lus**T**ering (DEPICT) algorithm.
 
 Released as part of ICCV 2017 paper submission "[Deep Clustering via Joint Convolutional Autoencoder Embedding and Relative Entropy Minimization](https://arxiv.org/abs/1704.06327)".
 
