@@ -488,9 +488,9 @@ def build_eml(input_var=None, n_out=None, W_initial=None):
     return l_out
 
 
-def build_MdA(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50],
-              dropouts=[0.1, 0.1, 0.1], kernel_sizes=[5, 5], strides=[2, 2],
-              paddings=[2, 2], hlayer_loss_param=0.1):
+def build_depict(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50],
+                 dropouts=[0.1, 0.1, 0.1], kernel_sizes=[5, 5], strides=[2, 2],
+                 paddings=[2, 2], hlayer_loss_param=0.1):
     # ENCODER
     l_e0 = lasagne.layers.DropoutLayer(
         lasagne.layers.InputLayer(shape=(None, n_in[0], n_in[1], n_in[2]), input_var=input_var), p=dropouts[0])
@@ -554,9 +554,9 @@ def build_MdA(input_var=None, n_in=[None, None, None], feature_map_sizes=[50, 50
     return l_e3, l_d0, loss_recons, loss_recons_clean
 
 
-def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_recons_clean, num_clusters, output_path,
-                  batch_size=100, test_batch_size=100, num_epochs=1000, learning_rate=1e-4, verbose=1, seed=42,
-                  continue_training=False):
+def train_depict_ae(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_recons_clean, num_clusters, output_path,
+                    batch_size=100, test_batch_size=100, num_epochs=1000, learning_rate=1e-4, verbose=1, seed=42,
+                    continue_training=False):
     learning_rate_shared = theano.shared(lasagne.utils.floatX(learning_rate))
     params = lasagne.layers.get_all_params(decoder, trainable=True)
     updates = lasagne.updates.adam(loss_recons, params, learning_rate=learning_rate_shared)
@@ -630,7 +630,7 @@ def train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_
         lasagne.layers.set_all_param_values(decoder, best_params_values)
 
 
-def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, test_batch_size=100, seed=42,
+def clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, test_batch_size=100, seed=42,
                continue_training=False):
     encoder_clean = lasagne.layers.get_output(encoder, deterministic=True)
     encoder_clean_function = theano.function([input_var], encoder_clean)
@@ -692,9 +692,9 @@ def Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path, tes
     return np.int32(y_pred), np.float32(centroids)
 
 
-def train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clusters, y_pred, output_path,
-              batch_size=100, test_batch_size=100, num_epochs=1000, learning_rate=1e-4, prediction_status='soft',
-              rec_mult=1, clus_mult=1, centroids=None, init_flag=1, continue_training=False):
+def train_depict(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clusters, y_pred, output_path,
+                 batch_size=100, test_batch_size=100, num_epochs=1000, learning_rate=1e-4, prediction_status='soft',
+                 rec_mult=1, clus_mult=1, centroids=None, init_flag=1, continue_training=False):
     ######################
     #   ADD RLC TO MdA   #
     ######################

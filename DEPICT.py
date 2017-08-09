@@ -89,28 +89,28 @@ print(
     % (str(feature_map_sizes), str(dropouts), str(kernel_sizes), str(strides), str(paddings)))
 
 ##############################  Build DEPICT Model  ##############################
-encoder, decoder, loss_recons, loss_recons_clean = build_MdA(input_var, n_in=dimensions,
-                                                             feature_map_sizes=feature_map_sizes,
-                                                             dropouts=dropouts, kernel_sizes=kernel_sizes,
-                                                             strides=strides,
-                                                             paddings=paddings)
+encoder, decoder, loss_recons, loss_recons_clean = build_depict(input_var, n_in=dimensions,
+                                                                feature_map_sizes=feature_map_sizes,
+                                                                dropouts=dropouts, kernel_sizes=kernel_sizes,
+                                                                strides=strides,
+                                                                paddings=paddings)
 
 ############################## Pre-train DEPICT Model   ##############################
 print("\n...Start AutoEncoder training...")
 initial_time = timeit.default_timer()
-train_MdA_val(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_recons_clean, num_clusters, output_path,
-              batch_size=batch_size, test_batch_size=test_batch_size, num_epochs=num_epochs, learning_rate=learning_rate,
-              verbose=verbose, seed=seed, continue_training=args.continue_training)
+train_depict_ae(dataset, X, y, input_var, decoder, encoder, loss_recons, loss_recons_clean, num_clusters, output_path,
+                batch_size=batch_size, test_batch_size=test_batch_size, num_epochs=num_epochs, learning_rate=learning_rate,
+                verbose=verbose, seed=seed, continue_training=args.continue_training)
 
 ############################## Clustering Pre-trained DEPICT Features  ##############################
-y_pred, centroids = Clustering(dataset, X, y, input_var, encoder, num_clusters, output_path,
+y_pred, centroids = clustering(dataset, X, y, input_var, encoder, num_clusters, output_path,
                                test_batch_size=test_batch_size, seed=seed, continue_training=args.continue_training)
 
 ############################## Train DEPICT Model  ##############################
-train_RLC(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clusters, y_pred, output_path,
-          batch_size=batch_size, test_batch_size=test_batch_size, num_epochs=num_epochs,
-          learning_rate=learning_rate, rec_mult=reconstruct_hyperparam, clus_mult=cluster_hyperparam,
-          centroids=centroids, continue_training=args.continue_training)
+train_depict(dataset, X, y, input_var, decoder, encoder, loss_recons, num_clusters, y_pred, output_path,
+             batch_size=batch_size, test_batch_size=test_batch_size, num_epochs=num_epochs,
+             learning_rate=learning_rate, rec_mult=reconstruct_hyperparam, clus_mult=cluster_hyperparam,
+             centroids=centroids, continue_training=args.continue_training)
 
 final_time = timeit.default_timer()
 
