@@ -825,7 +825,6 @@ def train_depict(dataset, X, y, input_var, decoder, encoder, loss_recons, num_cl
     if pred_normalizition_flag:
         cluster_frequency = np.sum(y_prob, axis=0)
         y_prob = y_prob ** 2 / cluster_frequency
-        # y_prob = y_prob / np.sqrt(cluster_frequency)
         y_prob = np.transpose(y_prob.T / np.sum(y_prob, axis=1))
     y_pred = np.argmax(y_prob, axis=1)
 
